@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+venv/
+env/
+.venv/
+
+.env
+
+*.log
+
+
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Database
+*.sqlite3
+
+uploads/
+outputs/
+roi_images/
+gradcam_outputs/
