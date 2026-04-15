@@ -4,9 +4,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.database import engine, Base
 from app.config import settings
-from app.models import User, XrayUpload, PredictionResult, SurveyResponse
+from app.models import User, XrayUpload, PredictionResult
 from app.routes import auth
-from app.routes import xray, prediction, report
+from app.routes import xray, prediction
 
 app = FastAPI(
     title="Fracture Triage System API",
@@ -38,7 +38,6 @@ app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads"
 app.include_router(auth.router, prefix="/api")
 app.include_router(xray.router, prefix="/api")
 app.include_router(prediction.router, prefix="/api")
-app.include_router(report.router, prefix="/api")
 
 
 @app.get("/")
