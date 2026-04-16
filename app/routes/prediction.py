@@ -17,6 +17,7 @@ from app.config import settings
 from concurrent.futures import ThreadPoolExecutor
 import requests
 from app.services.storage_service import upload_numpy_image
+import numpy as np
 
 router = APIRouter(prefix="/predict", tags=["Prediction Pipeline"])
 
@@ -52,12 +53,16 @@ def run_pipeline(
             detail="This upload is currently being processed"
         )
 
-    if not os.path.exists(upload.file_path):
+
+    try:
+        response = requests.get(upload.file_path, timeout=30)
+        response.raise_for_status()
+    except Exception as e:
         upload.status = "failed"
         db.commit()
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Image file not found on server"
+            status_code=404,
+            detail=f"Could not fetch image from storage: {str(e)}"
         )
 
     upload.status = "processing"
