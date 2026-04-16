@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import requests
+from backend.app.config import Settings
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from concurrent.futures import ThreadPoolExecutor
@@ -85,9 +86,14 @@ def run_pipeline(
                 anatomy_detections = anatomy_future.result(timeout=30)
                 try:
                     fracture_detections = fracture_future.result(timeout=30)
-                except Exception:
+                except Exception as e:
+                    print(f"[FRACTURE DETECTION FAILED]: {str(e)}")
                     fracture_detections = []
+
+                    print(f"[PIPELINE DEBUG] Anatomy: {len(anatomy_detections)}, Fractures: {len(fracture_detections)}")
+                    print(f"[PIPELINE DEBUG] FRACTURE_MODEL_ID = '{Settings.FRACTURE_MODEL_ID}'")
         except Exception as e:
+            print(f"[PIPELINE DEBUG] FRACTURE_MODEL_ID = '{Settings.FRACTURE_MODEL_ID}'")
             upload.status = "failed"
             db.commit()
             raise HTTPException(status_code=503, detail=f"Detection service unavailable: {str(e)}")
