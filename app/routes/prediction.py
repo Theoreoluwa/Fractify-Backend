@@ -78,21 +78,18 @@ def run_pipeline(
             return get_fracture_detections(upload.file_path)
 
         try:
-            # Run sequentially (safe for DB + Railway)
-            try:
-                anatomy_detections = get_detections(temp_path)
-            except Exception as e:
-                print(f"[ANATOMY DETECTION FAILED]: {e}")
-                anatomy_detections = []
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                anatomy_future = executor.submit(run_anatomy)
+                fracture_future = executor.submit(run_fracture)
 
-            try:
-                fracture_detections = get_fracture_detections(temp_path)
-            except Exception as e:
-                print(f"[FRACTURE DETECTION FAILED]: {e}")
-                fracture_detections = []
-                # print(f"[FRACTURE DETECTION FAILED]: {str(e)}")
-                # print(f"[PIPELINE DEBUG] Anatomy: {len(anatomy_detections)}, Fractures: {len(fracture_detections)}")
-                # print(f"[PIPELINE DEBUG] FRACTURE_MODEL_ID = '{settings.FRACTURE_MODEL_ID}'")
+                anatomy_detections = anatomy_future.result(timeout=30)
+                try:
+                    fracture_detections = fracture_future.result(timeout=30)
+                except Exception as e:
+                    fracture_detections = []
+                    print(f"[FRACTURE DETECTION FAILED]: {str(e)}")
+                    print(f"[PIPELINE DEBUG] Anatomy: {len(anatomy_detections)}, Fractures: {len(fracture_detections)}")
+                    print(f"[PIPELINE DEBUG] FRACTURE_MODEL_ID = '{settings.FRACTURE_MODEL_ID}'")
         except Exception as e:
             upload.status = "failed"
             db.commit()
