@@ -1,40 +1,26 @@
 from inference_sdk import InferenceHTTPClient
 from app.config import settings
 import math
-import requests
-
-
-def fetch_image_bytes(image_url: str) -> bytes:
-    try:
-        response = requests.get(image_url, timeout=30)
-        response.raise_for_status()
-        return response.content
-    except Exception as e:
-        raise Exception(f"Failed to fetch image: {str(e)}")
 
 
 def get_detections(image_path: str) -> list:
+    """image_path is now a Cloudinary URL — Roboflow accepts URLs directly."""
     client = InferenceHTTPClient(
         api_url=settings.ROBOFLOW_API_URL,
         api_key=settings.ROBOFLOW_API_KEY
     )
-
-    image_bytes = fetch_image_bytes(image_path)
-
-    result = client.infer(image_bytes, model_id=settings.ROBOFLOW_MODEL_ID)
+    result = client.infer(image_path, model_id=settings.ROBOFLOW_MODEL_ID)
     predictions = result.get("predictions", [])
     return predictions
 
 
 def get_fracture_detections(image_path: str) -> list:
+    """image_path is now a Cloudinary URL — Roboflow accepts URLs directly."""
     client = InferenceHTTPClient(
         api_url=settings.ROBOFLOW_API_URL,
         api_key=settings.ROBOFLOW_API_KEY
     )
-
-    image_bytes = fetch_image_bytes(image_path)
-
-    result = client.infer(image_bytes, model_id=settings.FRACTURE_MODEL_ID)
+    result = client.infer(image_path, model_id=settings.FRACTURE_MODEL_ID)
     predictions = result.get("predictions", [])
     return predictions
 
