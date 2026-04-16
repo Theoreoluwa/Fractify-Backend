@@ -15,6 +15,8 @@ from app.services.gradcam_service import generate_gradcam
 from app.services.triage_service import get_region_severity, get_overall_severity
 from app.config import settings
 from concurrent.futures import ThreadPoolExecutor
+import requests
+from app.services.storage_service import upload_numpy_image
 
 router = APIRouter(prefix="/predict", tags=["Prediction Pipeline"])
 
@@ -123,7 +125,19 @@ def run_pipeline(
             return XrayUploadResponse.model_validate(upload)
 
         # Step 5: Draw bounding boxes on original image
-        original_image = cv2.imread(upload.file_path)
+        # NEW — fetch image bytes from Cloudinary URL
+        try:
+            response = requests.get(upload.file_path, timeout=30)
+            response.raise_for_status()
+            nparr = np.frombuffer(response.content, np.uint8)
+            original_image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        except Exception as e:
+            upload.status = "failed"
+            db.commit()
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to fetch uploaded image: {str(e)}"
+            )
         if original_image is None:
             upload.status = "failed"
             db.commit()
@@ -172,9 +186,11 @@ def run_pipeline(
                     gradcam_path = None
 
             # Save cropped ROI image
-            roi_filename = f"{uuid.uuid4().hex}_roi.png"
-            roi_path = os.path.join(settings.UPLOAD_DIR, "xrays", roi_filename)
-            cv2.imwrite(roi_path, cropped_image)
+            try:
+                roi_result = upload_numpy_image(cropped_image, folder="fractify/roi")
+                roi_path = roi_result["url"]
+            except Exception:
+                roi_path = None
 
             # Get triage severity
             severity = get_region_severity(
@@ -288,9 +304,11 @@ def run_pipeline(
             })
 
         # Step 7: Save annotated image
-        annotated_filename = f"{uuid.uuid4().hex}_annotated.png"
-        annotated_path = os.path.join(settings.UPLOAD_DIR, "xrays", annotated_filename)
-        cv2.imwrite(annotated_path, annotated_image)
+        try:
+            annotated_result = upload_numpy_image(annotated_image, folder="fractify/annotated")
+            annotated_path = annotated_result["url"]
+        except Exception:
+            annotated_path = upload.file_path  # fallback to original
 
         # Step 8: Calculate overall severity
         overall_severity = get_overall_severity(all_results)

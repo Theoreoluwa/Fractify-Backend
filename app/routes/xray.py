@@ -10,6 +10,8 @@ from app.schemas.prediction import XrayUploadResponse
 from app.middleware.auth_middleware import get_current_user
 from app.config import settings
 from app.models.prediction import PredictionResult, XrayUpload
+from app.services.storage_service import upload_file_to_cloudinary
+from app.services.storage_service import delete_from_cloudinary, extract_public_id_from_url
 
 router = APIRouter(prefix="/xray", tags=["X-ray Upload"])
 
@@ -50,18 +52,17 @@ async def upload_xray(
             detail="Uploaded file is not a valid image or is corrupted"
         )
 
-    # Generate unique filename and save
-    unique_filename = f"{uuid.uuid4().hex}{file_ext}"
-    save_path = os.path.join(settings.UPLOAD_DIR, "xrays", unique_filename)
-
-    with open(save_path, "wb") as buffer:
-        buffer.write(contents)
+    # Upload to Cloudinary
+    try:
+        result = upload_file_to_cloudinary(contents, folder="fractify/xrays")
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Image upload failed: {str(e)}")
 
     # Create database record
     xray_upload = XrayUpload(
         user_id=current_user.id,
         original_filename=file.filename,
-        file_path=save_path,
+        file_path=result["url"],   # now stores Cloudinary URL
         status="uploaded"
     )
 
@@ -114,55 +115,35 @@ def get_upload_status(
         "overall_severity": upload.overall_severity
     }
 
-@router.delete("/{upload_id}", status_code=status.HTTP_200_OK)
-def delete_upload(
-    upload_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+
+
+@router.delete("/{upload_id}")
+def delete_upload(upload_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     upload = db.query(XrayUpload).filter(
         XrayUpload.id == upload_id,
         XrayUpload.user_id == current_user.id
     ).first()
 
     if not upload:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Upload not found"
-        )
+        raise HTTPException(status_code=404, detail="Upload not found")
 
-    if upload.status == "processing":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Cannot delete while processing"
-        )
+    # Collect all Cloudinary URLs to delete
+    urls_to_delete = [upload.file_path, upload.annotated_path]
+    for pred in upload.predictions:
+        urls_to_delete.append(pred.roi_image_path)
+        urls_to_delete.append(pred.gradcam_image_path)
 
-    # Get predictions first before deleting anything
-    predictions = db.query(PredictionResult).filter(
-        PredictionResult.upload_id == upload_id
-    ).all()
+    # Delete each asset from Cloudinary
+    for url in urls_to_delete:
+        if url:
+            public_id = extract_public_id_from_url(url)
+            if public_id:
+                delete_from_cloudinary(public_id)
 
-    # Delete ROI and gradcam files
-    for pred in predictions:
-        for path in [pred.roi_image_path, pred.gradcam_image_path]:
-            if path and os.path.exists(path):
-                os.remove(path)
-
-    # Delete prediction records
-    db.query(PredictionResult).filter(
-        PredictionResult.upload_id == upload_id
-    ).delete()
-
-    # Delete upload files
-    for path in [upload.file_path, upload.annotated_path]:
-        if path and os.path.exists(path):
-            os.remove(path)
-
-    # Delete upload record
+    # Delete DB records
     db.delete(upload)
     db.commit()
-
-    return {"message": "Upload and all associated data deleted successfully"}
+    return {"message": "Upload deleted successfully"}
 
 
 @router.get("/", response_model=list[XrayUploadResponse])

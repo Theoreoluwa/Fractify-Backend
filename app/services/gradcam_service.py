@@ -9,6 +9,7 @@ from pytorch_grad_cam.utils.image import show_cam_on_image
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 import app.services.classifier_service as classifier
 from app.config import settings
+from app.services.storage_service import upload_numpy_image
 
 _gradcam_transform = transforms.Compose([
     transforms.Resize((224, 224)),
@@ -43,9 +44,9 @@ def generate_gradcam(cropped_image: np.ndarray, predicted_class_idx: int) -> str
     original_resized = np.array(pil_image.resize((224, 224))) / 255.0
     heatmap_overlay = show_cam_on_image(original_resized, grayscale_cam, use_rgb=True)
 
-    heatmap_filename = f"{uuid.uuid4().hex}_gradcam.png"
-    heatmap_path = os.path.join(settings.UPLOAD_DIR, "gradcam", heatmap_filename)
     heatmap_bgr = cv2.cvtColor(heatmap_overlay, cv2.COLOR_RGB2BGR)
-    cv2.imwrite(heatmap_path, heatmap_bgr)
-
-    return heatmap_path
+    try:
+        result = upload_numpy_image(heatmap_bgr, folder="fractify/gradcam")
+        return result["url"]
+    except Exception:
+        return None

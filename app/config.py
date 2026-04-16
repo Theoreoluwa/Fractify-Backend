@@ -43,6 +43,11 @@ class Settings:
     ROBOFLOW_API_URL: str = os.getenv("ROBOFLOW_API_URL", "")
     FRACTURE_MODEL_ID: str = os.getenv("FRACTURE_MODEL_ID", "")
 
+    #Clodinary
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
+
     # Model
     RESNET_MODEL_PATH: str = os.getenv("RESNET_MODEL_PATH", "")
 
