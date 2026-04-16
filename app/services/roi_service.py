@@ -1,5 +1,19 @@
 import cv2
 import numpy as np
+import requests
+
+
+def fetch_image_from_url(image_url: str) -> np.ndarray:
+    try:
+        response = requests.get(image_url, timeout=30)
+        response.raise_for_status()
+
+        nparr = np.frombuffer(response.content, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        return image
+    except Exception:
+        return None
 
 
 def crop_region(image: np.ndarray, prediction: dict, padding: int = 40) -> np.ndarray:
@@ -22,7 +36,9 @@ def crop_region(image: np.ndarray, prediction: dict, padding: int = 40) -> np.nd
 
 
 def crop_all_regions(image_path: str, predictions: list) -> list:
-    image = cv2.imread(image_path)
+    # 🔥 FIX: load image from URL instead of local path
+    image = fetch_image_from_url(image_path)
+
     if image is None:
         return []
 

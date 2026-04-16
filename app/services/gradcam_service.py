@@ -14,7 +14,10 @@ from app.services.storage_service import upload_numpy_image
 _gradcam_transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    transforms.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225]
+    )
 ])
 
 _cam_instance = None
@@ -22,31 +25,54 @@ _cam_instance = None
 
 def _get_cam():
     global _cam_instance
+
     if _cam_instance is None:
         classifier._load_model()
+
+        if classifier._model is None:
+            raise RuntimeError("Classifier model failed to load")
+
         target_layer = [classifier._model.layer4[-1]]
-        _cam_instance = GradCAM(model=classifier._model, target_layers=target_layer)
+        _cam_instance = GradCAM(
+            model=classifier._model,
+            target_layers=target_layer
+        )
+
     return _cam_instance
 
 
 def generate_gradcam(cropped_image: np.ndarray, predicted_class_idx: int) -> str:
-    classifier._load_model()
+    if cropped_image is None or cropped_image.size == 0:
+        return None
+
     cam = _get_cam()
 
-    rgb_image = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)
-    pil_image = Image.fromarray(rgb_image)
-    input_tensor = _gradcam_transform(pil_image).unsqueeze(0)
-
-    targets = [ClassifierOutputTarget(predicted_class_idx)]
-    grayscale_cam = cam(input_tensor=input_tensor, targets=targets)
-    grayscale_cam = grayscale_cam[0, :]
-
-    original_resized = np.array(pil_image.resize((224, 224))) / 255.0
-    heatmap_overlay = show_cam_on_image(original_resized, grayscale_cam, use_rgb=True)
-
-    heatmap_bgr = cv2.cvtColor(heatmap_overlay, cv2.COLOR_RGB2BGR)
     try:
-        result = upload_numpy_image(heatmap_bgr, folder="fractify/gradcam")
-        return result["url"]
-    except Exception:
+        rgb_image = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)
+        pil_image = Image.fromarray(rgb_image)
+
+        input_tensor = _gradcam_transform(pil_image).unsqueeze(0)
+
+        targets = [ClassifierOutputTarget(predicted_class_idx)]
+        grayscale_cam = cam(input_tensor=input_tensor, targets=targets)
+        grayscale_cam = grayscale_cam[0, :]
+
+        original_resized = np.array(pil_image.resize((224, 224))) / 255.0
+        heatmap_overlay = show_cam_on_image(
+            original_resized,
+            grayscale_cam,
+            use_rgb=True
+        )
+
+        heatmap_bgr = cv2.cvtColor(heatmap_overlay, cv2.COLOR_RGB2BGR)
+
+        result = upload_numpy_image(
+            heatmap_bgr,
+            folder="fractify/gradcam"
+        )
+
+        return result.get("url")
+
+    except Exception as e:
+        print(f"[GradCAM ERROR]: {str(e)}")
         return None

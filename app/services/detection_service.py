@@ -1,6 +1,16 @@
 from inference_sdk import InferenceHTTPClient
 from app.config import settings
 import math
+import requests
+
+
+def fetch_image_bytes(image_url: str) -> bytes:
+    try:
+        response = requests.get(image_url, timeout=30)
+        response.raise_for_status()
+        return response.content
+    except Exception as e:
+        raise Exception(f"Failed to fetch image: {str(e)}")
 
 
 def get_detections(image_path: str) -> list:
@@ -8,7 +18,10 @@ def get_detections(image_path: str) -> list:
         api_url=settings.ROBOFLOW_API_URL,
         api_key=settings.ROBOFLOW_API_KEY
     )
-    result = client.infer(image_path, model_id=settings.ROBOFLOW_MODEL_ID)
+
+    image_bytes = fetch_image_bytes(image_path)
+
+    result = client.infer(image_bytes, model_id=settings.ROBOFLOW_MODEL_ID)
     predictions = result.get("predictions", [])
     return predictions
 
@@ -18,7 +31,10 @@ def get_fracture_detections(image_path: str) -> list:
         api_url=settings.ROBOFLOW_API_URL,
         api_key=settings.ROBOFLOW_API_KEY
     )
-    result = client.infer(image_path, model_id=settings.FRACTURE_MODEL_ID)
+
+    image_bytes = fetch_image_bytes(image_path)
+
+    result = client.infer(image_bytes, model_id=settings.FRACTURE_MODEL_ID)
     predictions = result.get("predictions", [])
     return predictions
 
@@ -34,7 +50,6 @@ def check_overlap(anatomy_box, fracture_box, threshold=0.2):
     f_x2 = fracture_box["x"] + fracture_box["width"] / 2
     f_y2 = fracture_box["y"] + fracture_box["height"] / 2
 
-    # Calculate intersection
     inter_x1 = max(a_x1, f_x1)
     inter_y1 = max(a_y1, f_y1)
     inter_x2 = min(a_x2, f_x2)
@@ -54,10 +69,6 @@ def check_overlap(anatomy_box, fracture_box, threshold=0.2):
 
 
 def classify_regions_by_overlap(anatomy_predictions, fracture_predictions, confidence_threshold=0.5):
-    """
-    For each anatomical region, check if any fracture detection overlaps with it.
-    Returns a list of classifications for each anatomical region.
-    """
     results = []
 
     for anat in anatomy_predictions:
@@ -87,11 +98,8 @@ def classify_regions_by_overlap(anatomy_predictions, fracture_predictions, confi
 
     return results
 
+
 def find_closest_region(fracture_box, anatomy_predictions, confidence_threshold=0.5):
-    """
-    Find the closest anatomical region to a fracture detection.
-    Returns the region class name and distance.
-    """
     frac_cx = fracture_box["x"]
     frac_cy = fracture_box["y"]
 
