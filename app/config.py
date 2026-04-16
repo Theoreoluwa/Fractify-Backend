@@ -12,6 +12,10 @@ class Settings:
     DB_PORT: str = os.getenv("DB_PORT", "")
     DB_NAME: str = os.getenv("DB_NAME", "")
 
+    DATABASE_URL: str = (
+        f"mysql+pymysql://{DB_USER}:{quote_plus(DB_PASSWORD)}"
+        f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -24,10 +28,6 @@ class Settings:
     class Config:
         env_file = ".env"
 
-    # DATABASE_URL: str = (
-    #     f"mysql+pymysql://{DB_USER}:{quote_plus(DB_PASSWORD)}"
-    #     f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    # )
 
     # JWT
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "")
