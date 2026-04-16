@@ -44,9 +44,9 @@ class Settings:
     FRACTURE_MODEL_ID: str = os.getenv("FRACTURE_MODEL_ID", "")
 
     #Clodinary
-    CLOUDINARY_CLOUD_NAME: str = ""
-    CLOUDINARY_API_KEY: str = ""
-    CLOUDINARY_API_SECRET: str = ""
+    CLOUDINARY_CLOUD_NAME: str = os.getenv("CLOUDINARY_CLOUD_NAME", "")
+    CLOUDINARY_API_KEY: str = os.getenv("CLOUDINARY_API_KEY", "")
+    CLOUDINARY_API_SECRET: str = os.getenv("CLOUDINARY_API_SECRET", "")
 
     # Model
     RESNET_MODEL_PATH: str = os.getenv("RESNET_MODEL_PATH", "")
