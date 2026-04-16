@@ -28,6 +28,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router, prefix="/api")
+app.include_router(xray.router, prefix="/api")
+app.include_router(prediction.router, prefix="/api")
 Base.metadata.create_all(bind=engine)
 
 os.makedirs(os.path.join(settings.UPLOAD_DIR, "xrays"), exist_ok=True)
@@ -36,9 +39,6 @@ os.makedirs(os.path.join(settings.UPLOAD_DIR, "reports"), exist_ok=True)
 
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
-app.include_router(auth.router, prefix="/api")
-app.include_router(xray.router, prefix="/api")
-app.include_router(prediction.router, prefix="/api")
 
 
 @app.get("/")
