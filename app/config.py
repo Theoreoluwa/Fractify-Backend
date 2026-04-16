@@ -6,11 +6,14 @@ load_dotenv()
 
 class Settings:
     #Database Settings
-    DB_USER: str = os.getenv("DB_USER", "")
-    DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
-    DB_HOST: str = os.getenv("DB_HOST", "")
-    DB_PORT: str = os.getenv("DB_PORT", "")
-    DB_NAME: str = os.getenv("DB_NAME", "")
+    DATABASE_URL: str = os.getenv("MYSQL_URL", "").replace(
+        "mysql://", "mysql+pymysql://"
+    )
+    # DB_USER: str = os.getenv("DB_USER", "")
+    # DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
+    # DB_HOST: str = os.getenv("DB_HOST", "")
+    # DB_PORT: str = os.getenv("DB_PORT", "")
+    # DB_NAME: str = os.getenv("DB_NAME", "")
 
     DATABASE_URL: str = (
         f"mysql+pymysql://{DB_USER}:{quote_plus(DB_PASSWORD)}"
@@ -48,3 +51,5 @@ class Settings:
 
 
 settings = Settings()
+
+print("mysql_url:", settings.DATABASE_URL)
