@@ -2,6 +2,11 @@ from inference_sdk import InferenceHTTPClient
 from app.config import settings
 import math
 
+# Cache these at module load so threads don't trigger config reads
+_ROBOFLOW_API_URL = settings.ROBOFLOW_API_URL
+_ROBOFLOW_API_KEY = settings.ROBOFLOW_API_KEY
+_ROBOFLOW_MODEL_ID_ = settings.ROBOFLOW_MODEL_ID
+_FRACTURE_MODEL_ID = settings.FRACTURE_MODEL_ID
 
 def get_detections(image_path: str) -> list:
     """image_path is now a Cloudinary URL — Roboflow accepts URLs directly."""

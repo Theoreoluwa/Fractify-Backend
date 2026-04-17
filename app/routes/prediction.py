@@ -71,11 +71,14 @@ def run_pipeline(
         # =========================
         # 2. RUN DETECTION MODELS (parallel, passing URL directly)
         # =========================
+        # Read values BEFORE entering threads to avoid SQLAlchemy session conflicts
+        image_url = upload.file_path
+        
         def run_anatomy():
-            return get_detections(upload.file_path)
+            return get_detections(image_url)
 
         def run_fracture():
-            return get_fracture_detections(upload.file_path)
+            return get_fracture_detections(image_url)
 
         try:
             with ThreadPoolExecutor(max_workers=2) as executor:
