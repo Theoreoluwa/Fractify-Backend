@@ -39,6 +39,18 @@ os.makedirs(os.path.join(settings.UPLOAD_DIR, "reports"), exist_ok=True)
 
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
+from app.services.classifier_service import _load_model
+from app.services.gradcam_service import _get_cam
+
+@app.on_event("startup")
+async def startup_event():
+    try:
+        _load_model()   # loads ResNet50 into memory
+        _get_cam()      # initialises GradCAM wrapper
+        print("[STARTUP] Models loaded and ready")
+    except Exception as e:
+        print(f"[STARTUP WARNING] Model preload failed: {e}")
+
 
 
 @app.get("/")
